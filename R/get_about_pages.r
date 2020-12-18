@@ -208,7 +208,7 @@ find_about_link <- function(base_url) {
 #'
 #' @param about_url An URL for an about page
 #' 
-#' @return About page text 
+#' @return About page text (character vector)
 #' @importFrom htm2txt gettxt
 #' @importFrom textclean strip
 #' @export
@@ -219,7 +219,7 @@ extract_about_page_content <- function(about_url) {
   if (str_detect(about_url, "tree search|is broken|is flat|PHP error|about page") == TRUE) {
 
     # Output: dataframe
-    about_url_text <- data.frame(text = about_url)
+    about_url_text <- about_url
     
   }
 
@@ -229,7 +229,8 @@ extract_about_page_content <- function(about_url) {
       strip(digit.remove = FALSE) # more comprehensive and efficient text cleaning
 
     # Output: dataframe
-    about_url_text <- data.frame(text = about_page)
+    about_url_text <- about_page
+    
   }
 
   return(about_url_text)
@@ -239,7 +240,7 @@ extract_about_page_content <- function(about_url) {
 #'
 #' @param base_url A base URL (the base part of the web address)
 #' 
-#' @return About page text 
+#' @return About page text (character vector)
 #' @export
 
 get_about_page_content <- function(base_url) {

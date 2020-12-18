@@ -10,7 +10,7 @@ extract_about_page_content(about_url)
 \item{about_url}{An URL for an about page}
 }
 \value{
-About page text
+About page text (character vector)
 }
 \description{
 Extract about page content
