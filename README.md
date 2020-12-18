@@ -11,8 +11,8 @@ The goal of GetAboutPages is to ...
 ``` r
 ## Install the current development version from GitHub
 
-devtools::install_github("p3lab/GetABoutPages",
-                         dependencies = TRUE)
+devtools::install_github("p3lab/GetABoutPages", dependencies = TRUE)
+
 ```
 
 ## Example
