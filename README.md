@@ -8,10 +8,11 @@ The goal of GetAboutPages is to ...
 
 ## Installation
 
-You can install the released version of GetAboutPages from [CRAN](https://CRAN.R-project.org) with:
-
 ``` r
-install.packages("GetAboutPages")
+## Install the current development version from GitHub
+
+devtools::install_github("p3lab/GetABoutPages",
+                         dependencies = TRUE)
 ```
 
 ## Example
