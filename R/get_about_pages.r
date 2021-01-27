@@ -8,7 +8,10 @@
 
 if_not_about <- function(href) {
   
-  if (TRUE %in% href %>% tolower() %>% str_detect("about") == TRUE) {
+  if ((TRUE %in% (href %>% tolower() %>% str_detect("about"))) & 
+      (any(href %>% tolower() %>% str_detect("about") == TRUE))) 
+    
+    {
     return(href)
   } else {
     return(NA)
