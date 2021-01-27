@@ -100,6 +100,7 @@ extract_about_links <- function(base_url) {
         link_text = "This website is broken.",
         link = base_url
       )
+      
     } else {
 
       # URL of pages
@@ -159,6 +160,9 @@ extract_about_links <- function(base_url) {
 
     return(about_links)
   }
+  
+  return(about_links)
+  
 }
 
 #' Find links and other information related to about page 
