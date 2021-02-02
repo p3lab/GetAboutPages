@@ -179,6 +179,7 @@ extract_about_links <- function(base_url) {
 #' @export
 
 find_about_link <- function(base_url) {
+  
   about_links <- extract_about_links(base_url)
 
   # Find cases where links are broken or links don't have about pages
@@ -196,6 +197,7 @@ find_about_link <- function(base_url) {
       )
     )
   } else {
+    
     about_url <- about_links %>%
       pull("href") %>%
       unique() %>%
