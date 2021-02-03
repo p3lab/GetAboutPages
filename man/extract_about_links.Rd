@@ -10,7 +10,7 @@ extract_about_links(base_url)
 \item{base_url}{A base URL (the base part of the web address)}
 }
 \value{
-If successful, the function returns a dataframe of three columns ('href', 'link_text', link'). If not, the function reports one of the following five error cases: "Found without tree search.", "This website is broken.", "The website is flat (no tree structure).", "PHP error", or "The website does not have about page."
+If successful, the function returns a dataframe of two columns ("href", "link"). If not successful, the function returns a dataframe of three columns ('href', 'link_text', link'). In this dataframe, href should be NA and link_test should inform one of the following five error cases: "Found without tree search.", "This website is broken.", "The website is flat (no tree structure).", "PHP error", or "The website does not have about page."
 }
 \description{
 Extract links and other information related to about page
