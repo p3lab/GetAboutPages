@@ -124,18 +124,20 @@ extract_about_links <- function(base_url) {
         )
       }
 
-      else if (TRUE %in% str_detect(href, ".php") == TRUE) {
+#      else if (TRUE %in% str_detect(href, ".php") == TRUE) {
 
         # Data frame with three columns
-        about_links <- tibble(
-          href = NA,
-          link_text = "PHP error",
-          link = base_url
-        )
-      } else {
+ #       about_links <- tibble(
+  #        href = NA,
+   #       link_text = "PHP error",
+    #      link = base_url
+     #   )
+      #} else {
 
         # Dataframe with three columns
-        if (sum(c(is.na(if_not_about(href)), is.na(if_not_about(link_text)))) > 0) {
+        else if (sum(c(is.na(if_not_about(href)), is.na(if_not_about(link_text)))) > 0) {
+          
+          # Data frame with three columns
           about_links <- tibble(
             "href" = NA,
             "link_text" = "The website does not have about page.",
@@ -159,7 +161,7 @@ extract_about_links <- function(base_url) {
             select(href, link)
           
         }
-      }
+      
     }
 
     return(about_links)
