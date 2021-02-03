@@ -23,7 +23,7 @@ if_not_about <- function(href) {
 #'
 #' @param base_url A base URL (the base part of the web address)
 #' 
-#' @return If successful, the function returns a dataframe of three columns ('href', 'link_text', link'). If not, the function reports one of the following five error cases: "Found without tree search.", "This website is broken.", "The website is flat (no tree structure).", "PHP error", or "The website does not have about page."
+#' @return If successful, the function returns a dataframe of two columns ("href", "link"). If not successful, the function returns a dataframe of three columns ('href', 'link_text', link'). In this dataframe, href should be NA and link_test should inform one of the following five error cases: "Found without tree search.", "This website is broken.", "The website is flat (no tree structure).", "PHP error", or "The website does not have about page."
 #' @importFrom stringr str_detect
 #' @importFrom stringr str_replace_all
 #' @importFrom glue glue 
@@ -35,6 +35,7 @@ if_not_about <- function(href) {
 #' @importFrom rvest html_attr
 #' @importFrom rvest html_text
 #' @importFrom dplyr filter
+#' @importFrom dplyr select
 #' @importFrom dplyr distinct
 #' @importFrom dplyr mutate
 #' @importFrom xml2 read_html
@@ -141,19 +142,22 @@ extract_about_links <- function(base_url) {
             "link" = base_url
           )
         } else {
+          
           df <- tibble(
-            "href" = if_not_about(href),
-            "link_text" = if_not_about(link_text),
-            "link" = rep(base_url, length(href))
+            "href" = unique(if_not_about(href)),
+            "link_text" = if_not_about(link_text)[1],
+            "link" = base_url
           )
 
           about_links <- df %>%
             filter(str_detect(tolower(link_text), "about") |
-              str_detect(tolower(href), "about")) %>%
+            str_detect(tolower(href), "about")) %>%
             filter(!is.na(href)) %>%
             distinct() %>%
             mutate(href = str_replace_all(href, "/", "")) %>%
-            mutate(link = glue("{base_url}{href}"))
+            mutate(link = glue("{base_url}{href}")) %>%
+            select(href, link)
+          
         }
       }
     }
