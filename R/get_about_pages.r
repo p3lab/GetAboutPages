@@ -135,7 +135,7 @@ extract_about_links <- function(base_url) {
       #} else {
 
         # Dataframe with three columns
-        else if (sum(c(is.na(if_not_about(href)), is.na(if_not_about(link_text)))) > 0) {
+        else if (sum(c(is.na(if_not_about(tolower(href))), is.na(if_not_about(tolower(link_text))))) > 0) {
           
           # Data frame with three columns
           about_links <- tibble(
@@ -146,8 +146,8 @@ extract_about_links <- function(base_url) {
         } else {
           
           df <- tibble(
-            "href" = unique(if_not_about(href)),
-            "link_text" = if_not_about(link_text)[1],
+            "href" = unique(if_not_about(href)), # Don't make it lower case (URLs are case sensitive)
+            "link_text" = if_not_about(tolower(link_text))[1],
             "link" = base_url
           )
 
