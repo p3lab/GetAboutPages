@@ -31,6 +31,7 @@ if_not_about <- function(href) {
 #' @importFrom RCurl url.exists
 #' @importFrom tibble tibble
 #' @importFrom purrr possibly
+#' @importFrom purrr map_int
 #' @importFrom rvest html_nodes
 #' @importFrom rvest html_attr
 #' @importFrom rvest html_text
@@ -47,9 +48,10 @@ extract_about_links <- function(base_url) {
   if (!grepl("/$", base_url)) {
     base_url <- glue("{base_url}/")
   }
-
-  possible_about_url1 <- glue("{base_url}about-us")
-  possible_about_url2 <- glue("{base_url}about")
+  
+  possible_about_urls <- c(glue("{base_url}about-us"), # About case 1
+                           glue("{base_url}about"), # About case 2 
+                           glue("{base_url}who-we-are")) # Who we are case 
 
   opts <- curlOptions(
 
@@ -66,24 +68,25 @@ extract_about_links <- function(base_url) {
     failonerror = FALSE
   )
 
+  
   # Check whether a request for the specific URL works without error 
-  if (url.exists(possible_about_url1, .opts = opts)) {
+  if (sum(map_int(possible_about_urls, ~url.exists(.,.opts = opts))) >= 1) {
 
     # Dataframe with three columns
     about_links <- tibble(
       href = "Base",
       link_text = "Found without tree search.",
-      link = possible_about_url1
+      link = possible_about_urls[which(map_int(possible_about_urls, ~url.exists(.,.opts = opts)) == 1)]
     )
 
     # Check whether a request for the specific URL works without error 
-  } else if (url.exists(possible_about_url2, .opts = opts)) {
+#  } else if (url.exists(possible_about_url2, .opts = opts)) {
     
-    about_links <- tibble(
-      href = "Base",
-      link_text = "Found without tree search.",
-      link = possible_about_url2
-    )
+#    about_links <- tibble(
+ #     href = "Base",
+  #    link_text = "Found without tree search.",
+   #   link = possible_about_url2
+    #)
 
   } else {
 
