@@ -25,6 +25,7 @@ if_not_about <- function(href) {
 #' 
 #' @return If successful, the function returns a dataframe of two columns ("href", "link"). If not successful, the function returns a dataframe of three columns ('href', 'link_text', link'). In this dataframe, href should be NA and link_test should inform one of the following five error cases: "Found without tree search.", "This website is broken.", "The website is flat (no tree structure).", "PHP error", or "The website does not have about page."
 #' @importFrom stringr str_detect
+#' @importFrom stringr str_match
 #' @importFrom stringr str_replace_all
 #' @importFrom glue glue 
 #' @importFrom RCurl curlOptions
@@ -40,7 +41,9 @@ if_not_about <- function(href) {
 #' @importFrom dplyr distinct
 #' @importFrom dplyr mutate
 #' @importFrom xml2 read_html
+#' @importFrom jsonlite fromJSON
 #' @export
+
 
 extract_about_links <- function(base_url) {
 
@@ -105,7 +108,31 @@ extract_about_links <- function(base_url) {
         link = base_url
       )
       
-    } else {
+    } 
+    
+    # else if checking whether the website is built by Wix
+    else if (TRUE %in% grepl("Wix.com", html_nodes(pg, "meta") %>% html_attr("content"))) { 
+      
+      emailjs <- pg %>% html_nodes("script") %>% html_text()
+      script_idx <- which(grepl("rendererModel",emailjs))
+      res <- str_match(emailjs[script_idx], "var rendererModel =\\s*(.*?)\\s*;")
+      res <- fromJSON(res[2])
+      page_list <- res$pageList$pages
+      
+      about_pages <- page_list %>% 
+        filter(grepl("about",tolower(title)) | grepl("about",tolower(pageUriSEO))) %>% 
+        select(pageUriSEO) 
+      
+      # Dataframe with three columns
+      about_links <- tibble(
+        href = "Base",
+        link_text = "The website is built by Wix.",
+        link = about_pages <- glue("{base_url}/{about_pages}")
+      )
+      
+    }
+    
+    else {
 
       # URL of pages
       href <- pg %>%

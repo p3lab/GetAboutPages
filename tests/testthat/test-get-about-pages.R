@@ -27,3 +27,7 @@ test_that("Get about page from a website built by PHP", {
 test_that("Get about page from a website that doesn't use about to identify about page", {
   expect_equal(class(get_about_page_content("https://www.tomorrowfund.org")), "character")
 })
+
+test_that("Get about from a website built by Wix", {
+  expect_equal(class(get_about_page_content("https://acarts.org")), "character")
+})
