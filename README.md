@@ -1,19 +1,20 @@
 
 # GetAboutPages
 
-<!-- badges: start -->
-[![Travis build status](https://travis-ci.com/p3lab/GetAboutPages.svg?branch=main)](https://travis-ci.com/p3lab/GetAboutPages)
-<!-- badges: end -->
-
 The goal of GetAboutPages is to ...
 
 ## Installation
 
-``` r
+```r
 ## Install the current development version from GitHub
 
-devtools::install_github("p3lab/GetABoutPages", dependencies = TRUE)
+if (!require("devtools")) {
 
+    install.packages("devtools")
+    
+    }
+
+install_github("p3lab/GetABoutPages", dependencies = TRUE)
 ```
 
 ## Example
