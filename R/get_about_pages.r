@@ -28,7 +28,7 @@ if_not_about <- function(href) {
 #' @importFrom RCurl url.exists
 #' @importFrom tibble tibble
 #' @importFrom purrr possibly
-#' @importFrom purrr map_int
+#' @importFrom furrr future_map_int
 #' @importFrom rvest html_nodes
 #' @importFrom rvest html_attr
 #' @importFrom rvest html_text
@@ -71,13 +71,13 @@ extract_about_links <- function(base_url) {
 
 
   # Check whether a request for the specific URL works without error
-  if (sum(map_int(possible_about_urls, ~ url.exists(., .opts = opts))) >= 1) {
+  if (sum(future_map_int(possible_about_urls, ~ url.exists(., .opts = opts))) >= 1) {
 
     # Dataframe with three columns
     about_links <- tibble(
       href = "Base",
       link_text = "Found without tree search.",
-      link = possible_about_urls[which(map_int(possible_about_urls, ~ url.exists(., .opts = opts)) == 1)]
+      link = possible_about_urls[which(future_map_int(possible_about_urls, ~ url.exists(., .opts = opts)) == 1)]
     )
 
     # Check whether a request for the specific URL works without error

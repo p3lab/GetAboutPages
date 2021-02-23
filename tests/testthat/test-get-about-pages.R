@@ -19,9 +19,9 @@ test_that("Get about page content returns a character vector (without tree searc
   expect_equal(class(get_about_page_content("https://snfagora.jhu.edu/")), "character")
 })
 
-test_that("Get about page from a website built by PHP", {
-  expect_equal(class(get_about_page_content("http://www.egacademyfoundation.org")), "character")
-})
+#test_that("Get about page from a website built by PHP", {
+#  expect_equal(class(get_about_page_content("http://www.egacademyfoundation.org")), "character")
+#}) # This website no longer exists.
 
 test_that("Get about page from a website that doesn't use about to identify about page", {
   expect_equal(class(get_about_page_content("https://www.tomorrowfund.org")), "character")
