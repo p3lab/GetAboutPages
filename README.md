@@ -2,6 +2,7 @@
 # GetAboutPages
 
 <!-- badges: start -->
+[![Travis build status](https://travis-ci.com/p3lab/GetAboutPages.svg?branch=main)](https://travis-ci.com/p3lab/GetAboutPages)
 <!-- badges: end -->
 
 The goal of GetAboutPages is to ...
