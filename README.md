@@ -17,7 +17,7 @@ if (!require("devtools")) {
 install_github("p3lab/GetABoutPages", dependencies = TRUE)
 ```
 
-## Example
+## Usage
 
 This is a basic example which shows you how to solve a common problem:
 
