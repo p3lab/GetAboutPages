@@ -276,7 +276,7 @@ extract_about_page_content <- function(about_url) {
 #'
 #' @param base_url A base URL (the base part of the web address)
 #'
-#' @return About page text (character vector)
+#' @return A dataframe that contains about page text 
 #' @export
 
 get_about_page_content <- function(base_url) {
@@ -290,5 +290,5 @@ get_about_page_content <- function(base_url) {
   # Close all URL connections
   on.exit(closeAllConnections())
 
-  return(about_url_text)
+  return(data.frame("about_page" = about_url_text))
 }
