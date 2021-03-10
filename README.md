@@ -14,7 +14,7 @@ if (!require("devtools")) {
     
     }
 
-install_github("p3lab/GetABoutPages", dependencies = TRUE)
+install_github("p3lab/GetAboutPages", dependencies = TRUE)
 ```
 
 ## Usage
