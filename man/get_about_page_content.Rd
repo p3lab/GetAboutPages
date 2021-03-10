@@ -10,7 +10,7 @@ get_about_page_content(base_url)
 \item{base_url}{A base URL (the base part of the web address)}
 }
 \value{
-About page text (character vector)
+about_page A dataframe that contains about page text
 }
 \description{
 Get about page content
