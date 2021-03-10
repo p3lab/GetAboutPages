@@ -9,9 +9,6 @@ test_that("Extract about links should not return NA (with tree search)", {
   expect_equal(class(get_about_page_content("http://www.saltpondscoalition.org/")), "character")
 
   # Test 2
-  expect_equal(class(get_about_page_content("https://www.sierraclub.org/")), "character")
-
-  # Test 3
   expect_equal(class(get_about_page_content("https://front.moveon.org")), "character")
 })
 
@@ -29,4 +26,8 @@ test_that("Get about page from a website that doesn't use about to identify abou
 
 test_that("Get about from a website built by Wix", {
   expect_equal(class(get_about_page_content("https://acarts.org")), "character")
+})
+
+test_that("Check out timeout filtering", {
+expect_error(get_about_page_content("http://lungbanksofamerica.org/", 3))
 })

@@ -18,6 +18,7 @@ if_not_about <- function(href) {
 #' Extract links and other information related to about page
 #'
 #' @param base_url A base URL (the base part of the web address)
+#' @param timeout_thres A timeout threshold. The default value is 10 seconds. 
 #'
 #' @return If successful, the function returns a dataframe of two columns ("href", "link"). If not successful, the function returns a dataframe of three columns ('href', 'link_text', link'). In this dataframe, href should be NA and link_test should inform one of the following five error cases: "Found without tree search.", "This website is broken.", "The website is flat (no tree structure).", "PHP error", or "The website does not have about page."
 #' @importFrom stringr str_detect
@@ -41,8 +42,10 @@ if_not_about <- function(href) {
 #' @export
 
 
-extract_about_links <- function(base_url) {
+extract_about_links <- function(base_url, timeout_thres = 10) {
 
+  # Timeout to prevent hanging on unreachable/very slow websites
+  if (url.exists(base_url, timeout = timeout_thres) == FALSE) { stop(glue("This URL is not responding ({timeout_thres} seconds timeout)."))} 
   # First, try looking for it directly
   if (!grepl("/$", base_url)) {
     base_url <- glue("{base_url}/")
@@ -57,16 +60,16 @@ extract_about_links <- function(base_url) {
   opts <- curlOptions(
 
     # Follow redirections
-    followlocation = TRUE,
+    followlocation = TRUE#,
 
     # Set a timeout for a request
-    timeout = 40,
+    # timeout = 40,
 
-    useragent = "R App",
+    # useragent = "R App",
 
-    referer = "https://google.com",
+    # referer = "https://google.com",
 
-    failonerror = FALSE
+    # failonerror = FALSE
   )
 
 
