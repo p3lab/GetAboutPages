@@ -14,4 +14,3 @@ test_that("Extract about links should not return NA (without tree search)", {
 test_that("Expect two columns from the successful case", {
   expect_equal(ncol(extract_about_links("http://saltpondscoalition.org")), 2)
 })
-

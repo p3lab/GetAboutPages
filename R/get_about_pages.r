@@ -40,12 +40,14 @@ if_not_about <- function(href) {
 #' @importFrom xml2 read_html
 #' @importFrom jsonlite fromJSON
 #' @export
-
+#' 
 
 extract_about_links <- function(base_url, timeout_thres = 10) {
 
   # Timeout to prevent hanging on unreachable/very slow websites
-  if (url.exists(base_url, timeout = timeout_thres) == FALSE) { stop(glue("This URL is not responding ({timeout_thres} seconds timeout)."))} 
+  if (url.exists(base_url, timeout = timeout_thres) == FALSE) {
+    stop(glue("This URL is not responding ({timeout_thres} seconds timeout)."))} 
+  
   # First, try looking for it directly
   if (!grepl("/$", base_url)) {
     base_url <- glue("{base_url}/")
@@ -57,21 +59,8 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
     glue("{base_url}who-we-are")
   ) # Who we are case
 
-  opts <- curlOptions(
-
-    # Follow redirections
-    followlocation = TRUE#,
-
-    # Set a timeout for a request
-    # timeout = 40,
-
-    # useragent = "R App",
-
-    # referer = "https://google.com",
-
-    # failonerror = FALSE
-  )
-
+  # Follow redirections
+  opts <- curlOptions(followlocation = TRUE)
 
   # Check whether a request for the specific URL works without error
   if (sum(future_map_int(possible_about_urls, ~ url.exists(., .opts = opts))) >= 1) {
@@ -83,14 +72,6 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
       link = possible_about_urls[which(future_map_int(possible_about_urls, ~ url.exists(., .opts = opts)) == 1)]
     )
 
-    # Check whether a request for the specific URL works without error
-    #  } else if (url.exists(possible_about_url2, .opts = opts)) {
-
-    #    about_links <- tibble(
-    #     href = "Base",
-    #    link_text = "Found without tree search.",
-    #   link = possible_about_url2
-    # )
   } else {
 
     ## else try looking for a suitable link
@@ -110,13 +91,20 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
     }
 
     # else if checking whether the website is built by Wix
-    else if (TRUE %in% grepl("Wix.com", html_nodes(pg, "meta") %>% html_attr("content"))) {
+    else if (TRUE %in% grepl("Wix.com", 
+                             html_nodes(pg, "meta") %>% 
+                             html_attr("content"))) {
+      
       emailjs <- pg %>%
         html_nodes("script") %>%
         html_text()
+      
       script_idx <- which(grepl("rendererModel", emailjs))
+      
       res <- str_match(emailjs[script_idx], "var rendererModel =\\s*(.*?)\\s*;")
+      
       res <- fromJSON(res[2])
+      
       page_list <- res$pageList$pages
 
       about_pages <- page_list %>%
@@ -134,14 +122,10 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
     else {
 
       # URL of pages
-      href <- pg %>%
-        html_nodes("a") %>%
-        html_attr("href")
+      href <- pg %>% html_nodes("a") %>% html_attr("href")
 
       # Alternative
-      link_text <- pg %>%
-        html_nodes("a") %>%
-        html_text()
+      link_text <- pg %>% html_nodes("a") %>% html_text()
 
       if (length(href) == 0) {
 
@@ -153,16 +137,6 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
         )
       }
 
-      #      else if (TRUE %in% str_detect(href, ".php") == TRUE) {
-
-      # Data frame with three columns
-      #       about_links <- tibble(
-      #        href = NA,
-      #       link_text = "PHP error",
-      #      link = base_url
-      #   )
-      # } else {
-
       # Dataframe with three columns
       else if (sum(c(is.na(if_not_about(tolower(href))), is.na(if_not_about(tolower(link_text))))) > 0) {
 
@@ -173,20 +147,41 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
           "link" = base_url
         )
       } else {
+        
+        
         df <- tibble(
           "href" = unique(if_not_about(href)), # Don't make it lower case (URLs are case sensitive)
           "link_text" = if_not_about(tolower(link_text))[1],
           "link" = base_url
-        )
-
+        ) 
+        
         about_links <- df %>%
           filter(str_detect(tolower(link_text), "about") |
-            str_detect(tolower(href), "about")) %>%
+                   str_detect(tolower(href), "about")) %>%
           filter(!is.na(href)) %>%
-          distinct() %>%
+          distinct() 
+
+        # To make link formatting not off when page uses an absolute reference        
+        if (str_detect(about_links$href, "http")) {
+
+        # TRUE (absolute path)
+        about_links <- about_links %>%
+          mutate(link = href) %>%
+          mutate(href = "Absolute link") %>%
+          select(href, link)
+        
+        } else {
+        
+        # FALSE (relative path)
+        about_links <- about_links %>%
           mutate(href = str_replace_all(href, "/", "")) %>%
           mutate(link = glue("{base_url}{href}")) %>%
           select(href, link)
+        
+        }
+        
+        return(about_links)
+        
       }
     }
 
@@ -207,9 +202,11 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
 #' @importFrom dplyr first
 #' @importFrom stringr str_detect
 #' @importFrom stringr str_replace
+#' @importFrom xml2 url_absolute 
 #' @export
 
 find_about_link <- function(base_url) {
+  
   about_links <- extract_about_links(base_url)
 
   # Find cases where links are broken or links don't have about pages
@@ -227,15 +224,26 @@ find_about_link <- function(base_url) {
       )
     )
   } else {
-    about_url <- about_links %>%
-      pull("href") %>%
-      unique() %>%
-      first()
+    
+    about_url <- about_links %>% pull("href") %>% unique() %>% first()
 
     # Base and target cases
-    about_url <- ifelse(about_url != "Base", glue("{base_url}{about_url}"), about_links$link)
-
+    if (about_url == "Base") {
+      
+      about_url <- about_links$link %>% first()
+    
+      } else if (str_detect(about_url, "Absolute")) {
+        
+      about_url <- about_links$link
+      
+      } else {
+        
+        about_url <- glue("{base_url}{about_url}")
+        
+      }
+    
     about_url <- str_replace(about_url, "(.*?//.*?)//(.*?)", "\\1/\\2")
+    
   }
 
   # about_url
