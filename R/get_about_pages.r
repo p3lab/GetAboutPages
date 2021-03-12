@@ -44,13 +44,20 @@ if_not_about <- function(href) {
 
 extract_about_links <- function(base_url, timeout_thres = 10) {
 
+  raw_url <- base_url
   # Timeout to prevent hanging on unreachable/very slow websites
-  if (url.exists(base_url, timeout = timeout_thres) == FALSE) {
+  if (url.exists(raw_url, timeout = timeout_thres) == FALSE) {
     stop(glue("This URL is not responding ({timeout_thres} seconds timeout)."))} 
   
   # First, try looking for it directly
+  link_suffix <- gsub("^.*/","",raw_url)
+  
   if (!grepl("/$", base_url)) {
-    base_url <- glue("{base_url}/")
+    if (grepl("\\.", link_suffix)) {
+      base_url <- gsub(paste0(link_suffix,"$"),"",base_url) 
+    } else {
+      base_url <- glue("{base_url}/")
+    }
   }
 
   possible_about_urls <- c(
@@ -78,7 +85,7 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
 
     possible_read_html <- possibly(read_html, otherwise = "This URL is broken.")
 
-    pg <- possible_read_html(base_url)
+    pg <- possible_read_html(raw_url)
 
     if ("xml_document" %in% class(pg) == FALSE) {
 
@@ -161,24 +168,11 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
           filter(!is.na(href)) %>%
           distinct() 
 
-        # To make link formatting not off when page uses an absolute reference        
-        if (str_detect(about_links$href, "http")) {
-
-        # TRUE (absolute path)
+        # To make link formatting not off when page uses an absolute reference   
         about_links <- about_links %>%
-          mutate(link = href) %>%
-          mutate(href = "Absolute link") %>%
+          mutate(link = url_absolute(href, raw_url)) %>%
           select(href, link)
         
-        } else {
-        
-        # FALSE (relative path)
-        about_links <- about_links %>%
-          mutate(href = str_replace_all(href, "/", "")) %>%
-          mutate(link = glue("{base_url}{href}")) %>%
-          select(href, link)
-        
-        }
         
         return(about_links)
         
@@ -226,24 +220,8 @@ find_about_link <- function(base_url) {
   } else {
     
     about_url <- about_links %>% pull("href") %>% unique() %>% first()
-
-    # Base and target cases
-    if (about_url == "Base") {
-      
-      about_url <- about_links$link %>% first()
-    
-      } else if (str_detect(about_url, "Absolute")) {
-        
-      about_url <- about_links$link
-      
-      } else {
-        
-        about_url <- glue("{base_url}{about_url}")
-        
-      }
-    
-    about_url <- str_replace(about_url, "(.*?//.*?)//(.*?)", "\\1/\\2")
-    
+    about_url <- url_absolute(about_url, base_url)
+  
   }
 
   # about_url
