@@ -29,8 +29,9 @@ test_that("Get about from a website built by Wix", {
 })
 
 test_that("Check out timeout filtering", {
-expect_error(get_about_page_content("http://lungbanksofamerica.org/", 3))
+  expect_error(get_about_page_content("http://lungbanksofamerica.org/", 3))
 })
 
-extract_about_links("https://front.moveon.org")$link
-
+test_that("Check whether stripping / is done properly", {
+  expect_equal(class(get_about_page_content("https://dcecenter.com/")), "data.frame")
+})
