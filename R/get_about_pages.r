@@ -51,7 +51,12 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
   if (url.exists(base_url, timeout = timeout_thres) == FALSE) {
     stop(glue("This URL is not responding ({timeout_thres} seconds timeout)."))} 
   
-  # First, try looking for it directly
+  # If base url includes either index.php or index.html removes it 
+  if (str_detect(base_url, "index.php|index.html")) {
+    base_url <- str_remove(base_url, "index.php|index.html")
+  }
+  
+  # Try looking for it directly
   if (!grepl("/$", base_url)) {
     base_url <- glue("{base_url}/")
   }
@@ -154,13 +159,13 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
         
         df <- tibble(
           "href" = unique(if_not_about(href)), # Don't make it lower case (URLs are case sensitive)
-          "link_text" = if_not_about(tolower(link_text))[1],
+          "link_text" = if_not_about(tolower(link_text))[1], # Select the first element 
           "link" = base_url
         ) 
         
         about_links <- df %>%
           filter(str_detect(tolower(link_text), "about") |
-                   str_detect(tolower(href), "about")) %>%
+                 str_detect(tolower(href), "about")) %>%
           filter(!is.na(href)) %>%
           distinct() 
         
@@ -252,7 +257,7 @@ find_about_link <- function(base_url) {
       
       about_url <- about_links$link %>% first()
     
-      } else if (str_detect(about_url, "Absolute")) {
+      } else if (str_detect(about_url, "Absolute|.php")) {
         
       about_url <- about_links$link
       

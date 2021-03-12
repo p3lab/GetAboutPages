@@ -35,3 +35,9 @@ test_that("Check out timeout filtering", {
 test_that("Check whether stripping / is done properly", {
   expect_equal(class(get_about_page_content("https://dcecenter.com/")), "data.frame")
 })
+
+test_that("Check whether index.html or index.php is included in a base URL", {
+  expect_equal(class(get_about_page_content("http://fourcornersarts.org/index.html")), "data.frame")
+})
+
+
