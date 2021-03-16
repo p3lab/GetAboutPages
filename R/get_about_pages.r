@@ -42,6 +42,7 @@ if_not_about <- function(href) {
 #' @importFrom dplyr mutate
 #' @importFrom xml2 read_html
 #' @importFrom jsonlite fromJSON
+#' @importFrom httr parse_url
 #' @export
 #' 
 
@@ -51,9 +52,14 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
   if (url.exists(base_url, timeout = timeout_thres) == FALSE) {
     stop(glue("This URL is not responding ({timeout_thres} seconds timeout)."))} 
   
-  # If base url includes either index.php or index.html removes it 
-  if (str_detect(base_url, "index.php|index.html")) {
-    base_url <- str_remove(base_url, "index.php|index.html")
+  # If base url includes either index.html, index.php, or home.asp (or other similar cases)
+  suffix <- str_replace(base_url, "^.*/", "") 
+  
+  if (suffix %>% str_detect("html|php|asp")) {
+    
+      # Going up to the host level 
+      base_url <- glue("http://{parse_url(base_url)$host}")
+    
   }
   
   # Try looking for it directly
@@ -82,7 +88,7 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
 
   } else {
 
-    ## else try looking for a suitable link
+    # else try looking for a suitable link
 
     possible_read_html <- possibly(read_html, otherwise = "This URL is broken.")
 
