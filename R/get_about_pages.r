@@ -32,6 +32,7 @@ if_not_about <- function(href) {
 #' @importFrom RCurl url.exists
 #' @importFrom tibble tibble
 #' @importFrom purrr possibly
+#' @importFrom purrr is_empty 
 #' @importFrom furrr future_map_int
 #' @importFrom rvest html_nodes
 #' @importFrom rvest html_attr
@@ -105,7 +106,7 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
     }
 
     # else if checking whether the website is built by Wix
-    else if (TRUE %in% grepl("Wix.com", 
+    if (TRUE %in% grepl("Wix.com", 
                              html_nodes(pg, "meta") %>% 
                              html_attr("content"))) {
       
@@ -116,24 +117,29 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
       script_idx <- which(grepl("rendererModel", emailjs))
       
       res <- str_match(emailjs[script_idx], "var rendererModel =\\s*(.*?)\\s*;")
+    
+      if (!is_empty(res)) {
+        
+        res <- fromJSON(res[2])
       
-      res <- fromJSON(res[2])
-      
-      page_list <- res$pageList$pages
+        page_list <- res$pageList$pages
 
-      about_pages <- page_list %>%
-        filter(grepl("about", tolower(title)) | grepl("about", tolower(pageUriSEO))) %>%
-        select(pageUriSEO)
+        about_pages <- page_list %>%
+          filter(grepl("about", tolower(title)) | grepl("about", tolower(pageUriSEO))) %>%
+          select(pageUriSEO)
 
-      # Dataframe with three columns
-      about_links <- tibble(
-        href = "Base",
-        link_text = "The website is built by Wix.",
-        link = about_pages <- glue("{base_url}/{about_pages}")
-      )
+        # Dataframe with three columns
+        about_links <- tibble(
+          href = "Base",
+          link_text = "The website is built by Wix.",
+          link = about_pages <- glue("{base_url}/{about_pages}")
+        ) 
+        
+      } 
+        
     }
 
-    else {
+    if ("xml_document" %in% class(pg)) {
 
       # URL of pages
       href <- pg %>% html_nodes("a") %>% html_attr("href")

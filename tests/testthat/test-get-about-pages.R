@@ -25,7 +25,11 @@ test_that("Get about page from a website that doesn't use about to identify abou
 })
 
 test_that("Get about from a website built by Wix", {
+  
   expect_equal(class(get_about_page_content("https://acarts.org")), "data.frame")
+  
+  expect_equal(class(get_about_page_content("https://www.gbsa.info/")), "data.frame")
+  
 })
 
 test_that("Check out timeout filtering", {
