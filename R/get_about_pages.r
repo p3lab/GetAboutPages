@@ -44,6 +44,7 @@ if_not_about <- function(href) {
 #' @importFrom xml2 read_html
 #' @importFrom jsonlite fromJSON
 #' @importFrom httr parse_url
+#' @importFrom httr GET
 #' @export
 #' 
 
@@ -53,10 +54,10 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
   if (url.exists(base_url, timeout = timeout_thres) == FALSE) {
     stop(glue("This URL is not responding ({timeout_thres} seconds timeout)."))} 
   
-  # If base url includes either index.html, index.php, or home.asp (or other similar cases)
+  # If base url includes either index.html or index.php (or other similar cases)
   suffix <- str_replace(base_url, "^.*/", "") 
   
-  if (suffix %>% str_detect("html|php|asp")) {
+  if (suffix %>% str_detect("html|php")) {
     
       # Going up to the host level 
       base_url <- glue("http://{parse_url(base_url)$host}")
@@ -91,9 +92,17 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
 
     # else try looking for a suitable link
 
-    possible_read_html <- possibly(read_html, otherwise = "This URL is broken.")
+    response <- GET(base_url)
+    
+    # no-encoding issues from the server 
+    possible_read <- possibly(read_html, otherwise = "This URL is broken.")
 
-    pg <- possible_read_html(base_url)
+    # encoding issues from the server 
+    possible_content <- possibly(~content(., encoding = "ISO-8859-1"), otherwise = "This URL is broken.")
+    
+    pg <- if (!str_detect(base_url, ".asp")) { possible_read(response) } else {
+      possible_content(response) 
+    }
 
     if ("xml_document" %in% class(pg) == FALSE) {
 
