@@ -26,7 +26,7 @@ Imports:
     dplyr,
     furrr,
     purrr,
-    RCurl,
+    jsonlite,
     here,
     glue,
     rex,
