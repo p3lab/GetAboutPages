@@ -23,12 +23,16 @@ if_not_about <- function(href) {
 #' @return If successful, the function returns a dataframe of two columns ("href", "link"). If not successful, the function returns a dataframe of three columns ('href', 'link_text', link'). In this dataframe, href should be NA and link_test should inform one of the following five error cases: "Found without tree search.", "This website is broken.", "The website is flat (no tree structure).", "PHP error", or "The website does not have about page."
 #' @importFrom stringr str_detect
 #' @importFrom stringr str_match
+#' @importFrom stringr str_remove
+#' @importFrom stringr str_count
+#' @importFrom stringr str_replace
 #' @importFrom stringr str_replace_all
 #' @importFrom glue glue
 #' @importFrom RCurl curlOptions
 #' @importFrom RCurl url.exists
 #' @importFrom tibble tibble
 #' @importFrom purrr possibly
+#' @importFrom purrr is_empty 
 #' @importFrom furrr future_map_int
 #' @importFrom rvest html_nodes
 #' @importFrom rvest html_attr
@@ -39,6 +43,8 @@ if_not_about <- function(href) {
 #' @importFrom dplyr mutate
 #' @importFrom xml2 read_html
 #' @importFrom jsonlite fromJSON
+#' @importFrom httr parse_url
+#' @importFrom httr GET
 #' @export
 #' 
 
@@ -48,7 +54,17 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
   if (url.exists(base_url, timeout = timeout_thres) == FALSE) {
     stop(glue("This URL is not responding ({timeout_thres} seconds timeout)."))} 
   
-  # First, try looking for it directly
+  # If base url includes either index.html or index.php (or other similar cases)
+  suffix <- str_replace(base_url, "^.*/", "") 
+  
+  if (suffix %>% str_detect("html|php")) {
+    
+      # Going up to the host level 
+      base_url <- glue("http://{parse_url(base_url)$host}")
+    
+  }
+  
+  # Try looking for it directly
   if (!grepl("/$", base_url)) {
     base_url <- glue("{base_url}/")
   }
@@ -74,11 +90,19 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
 
   } else {
 
-    ## else try looking for a suitable link
+    # else try looking for a suitable link
 
-    possible_read_html <- possibly(read_html, otherwise = "This URL is broken.")
+    response <- GET(base_url)
+    
+    # no-encoding issues from the server 
+    possible_read <- possibly(read_html, otherwise = "This URL is broken.")
 
-    pg <- possible_read_html(base_url)
+    # encoding issues from the server 
+    possible_content <- possibly(~content(., encoding = "ISO-8859-1"), otherwise = "This URL is broken.")
+    
+    pg <- if (!str_detect(base_url, ".asp")) { possible_read(response) } else {
+      possible_content(response) 
+    }
 
     if ("xml_document" %in% class(pg) == FALSE) {
 
@@ -91,7 +115,7 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
     }
 
     # else if checking whether the website is built by Wix
-    else if (TRUE %in% grepl("Wix.com", 
+    if (TRUE %in% grepl("Wix.com", 
                              html_nodes(pg, "meta") %>% 
                              html_attr("content"))) {
       
@@ -102,24 +126,29 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
       script_idx <- which(grepl("rendererModel", emailjs))
       
       res <- str_match(emailjs[script_idx], "var rendererModel =\\s*(.*?)\\s*;")
+    
+      if (!is_empty(res)) {
+        
+        res <- fromJSON(res[2])
       
-      res <- fromJSON(res[2])
-      
-      page_list <- res$pageList$pages
+        page_list <- res$pageList$pages
 
-      about_pages <- page_list %>%
-        filter(grepl("about", tolower(title)) | grepl("about", tolower(pageUriSEO))) %>%
-        select(pageUriSEO)
+        about_pages <- page_list %>%
+          filter(grepl("about", tolower(title)) | grepl("about", tolower(pageUriSEO))) %>%
+          select(pageUriSEO)
 
-      # Dataframe with three columns
-      about_links <- tibble(
-        href = "Base",
-        link_text = "The website is built by Wix.",
-        link = about_pages <- glue("{base_url}/{about_pages}")
-      )
+        # Dataframe with three columns
+        about_links <- tibble(
+          href = "Base",
+          link_text = "The website is built by Wix.",
+          link = about_pages <- glue("{base_url}/{about_pages}")
+        ) 
+        
+      } 
+        
     }
 
-    else {
+    if ("xml_document" %in% class(pg)) {
 
       # URL of pages
       href <- pg %>% html_nodes("a") %>% html_attr("href")
@@ -151,17 +180,17 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
         
         df <- tibble(
           "href" = unique(if_not_about(href)), # Don't make it lower case (URLs are case sensitive)
-          "link_text" = if_not_about(tolower(link_text))[1],
+          "link_text" = if_not_about(tolower(link_text))[1], # Select the first element 
           "link" = base_url
         ) 
         
         about_links <- df %>%
           filter(str_detect(tolower(link_text), "about") |
-                   str_detect(tolower(href), "about")) %>%
+                 str_detect(tolower(href), "about")) %>%
           filter(!is.na(href)) %>%
           distinct() 
-
-        # To make link formatting not off when page uses an absolute reference        
+        
+        # If link formatting is off because the page uses an absolute reference        
         if (str_detect(about_links$href, "http")) {
 
         # TRUE (absolute path)
@@ -172,11 +201,28 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
         
         } else {
         
-        # FALSE (relative path)
+          # FALSE (relative path)
+          
+          # Two or more depths  
+          if (str_count(about_links$link_text, "\\\n") >= 2) {
+            
+            about_links <- about_links %>%
+              # Remove only the first / 
+              mutate(href = str_replace(href, "/", "")) %>%
+              mutate(link = glue("{base_url}{href}")) %>%
+              select(href, link)
+          }
+          
+          else {
+            
+         # One depth 
         about_links <- about_links %>%
+          # Remove every / 
           mutate(href = str_replace_all(href, "/", "")) %>%
           mutate(link = glue("{base_url}{href}")) %>%
           select(href, link)
+        
+          }
         
         }
         
@@ -232,7 +278,7 @@ find_about_link <- function(base_url) {
       
       about_url <- about_links$link %>% first()
     
-      } else if (str_detect(about_url, "Absolute")) {
+      } else if (str_detect(about_url, "Absolute|.php")) {
         
       about_url <- about_links$link
       

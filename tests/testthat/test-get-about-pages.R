@@ -25,12 +25,21 @@ test_that("Get about page from a website that doesn't use about to identify abou
 })
 
 test_that("Get about from a website built by Wix", {
+  
   expect_equal(class(get_about_page_content("https://acarts.org")), "data.frame")
+  
+  expect_equal(class(get_about_page_content("https://www.gbsa.info/")), "data.frame")
+  
 })
 
 test_that("Check out timeout filtering", {
-expect_error(get_about_page_content("http://lungbanksofamerica.org/", 3))
+  expect_error(get_about_page_content("http://lungbanksofamerica.org/", 3))
 })
 
-extract_about_links("https://front.moveon.org")$link
+test_that("Check whether stripping / is done properly", {
+  expect_equal(class(get_about_page_content("https://dcecenter.com/")), "data.frame")
+})
 
+test_that("Check whether index.html is included in a base URL", {
+  expect_equal(class(get_about_page_content("http://fourcornersarts.org/index.html")), "data.frame")
+})
