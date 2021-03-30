@@ -22,12 +22,14 @@ if_not_about <- function(href) {
 #'        HTTP status code is not in the `2xx` range. Default is to return `TRUE`.
 #' @param quiet if not `FALSE`, then every time the `non_2xx_return_value` condition
 #'        arises a warning message will be displayed. Default is `TRUE`.
+#' @param timeout_thres timeout in seconds for httr attempt
 #' 
 #' @return A boolean value to indicate whether a website is reachable
 #'
 #' @importFrom httr GET
 #' @importFrom httr HEAD
 #' @importFrom httr status_code
+#' @importFrom httr config
 #' @importFrom purrr safely
 
 url_exists <- function(url, non_2xx_return_value = FALSE, quiet = TRUE, timeout_thres = 10, ...) {
