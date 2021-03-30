@@ -15,6 +15,44 @@ if_not_about <- function(href) {
   }
 }
 
+
+#' Check if a url exists with httr
+#' @param url A URL to check
+#' @param non_2xx_return_value what to do if the site exists but the
+#'        HTTP status code is not in the `2xx` range. Default is to return `TRUE`.
+#' @param quiet if not `FALSE`, then every time the `non_2xx_return_value` condition
+#'        arises a warning message will be displayed. Default is `TRUE`.
+#' 
+#' @return A boolean value to indicate whether a website is reachable
+#'
+#' @importFrom httr GET
+#' @importFrom httr HEAD
+#' @importFrom httr status_code
+#' @importFrom purrr safely
+
+url_exists <- function(url, non_2xx_return_value = FALSE, quiet = TRUE, timeout_thres = 10, ...) {
+  sHEAD <- safely(httr::HEAD)
+  sGET <- safely(httr::GET)
+
+  # Try HEAD first since it's lightweight
+  res <- sHEAD(url, config(ssl_verifypeer=FALSE, timeout=timeout_thres,followlocation=TRUE), ...)
+
+  if (is.null(res$result) || ((httr::status_code(res$result) %/% 200) != 1)) {
+
+    res <- sGET(url, config(ssl_verifypeer=FALSE, timeout=timeout_thres,followlocation=TRUE), ...)
+
+    if (is.null(res$result)) return(FALSE) # or whatever you want to return on "hard" errors
+    if (((httr::status_code(res$result) %/% 200) != 1)) {
+      if (!quiet) warning(sprintf("Requests for [%s] responded but without an HTTP status code in the 200-299 range", x))
+	return(non_2xx_return_value)
+    }
+      return(TRUE)
+   } else {
+      return(TRUE)
+   }
+}
+
+
 #' Extract links and other information related to about page
 #'
 #' @param base_url A base URL (the base part of the web address)
@@ -28,8 +66,6 @@ if_not_about <- function(href) {
 #' @importFrom stringr str_replace
 #' @importFrom stringr str_replace_all
 #' @importFrom glue glue
-#' @importFrom RCurl curlOptions
-#' @importFrom RCurl url.exists
 #' @importFrom tibble tibble
 #' @importFrom purrr possibly
 #' @importFrom purrr is_empty 
@@ -42,6 +78,7 @@ if_not_about <- function(href) {
 #' @importFrom dplyr distinct
 #' @importFrom dplyr mutate
 #' @importFrom xml2 read_html
+#' @importFrom xml2 url_absolute
 #' @importFrom jsonlite fromJSON
 #' @importFrom httr parse_url
 #' @importFrom httr GET
@@ -51,17 +88,16 @@ if_not_about <- function(href) {
 extract_about_links <- function(base_url, timeout_thres = 10) {
 
   # Timeout to prevent hanging on unreachable/very slow websites
-  if (url.exists(base_url, timeout = timeout_thres) == FALSE) {
+  if (url_exists(base_url, timeout_thres = timeout_thres) == FALSE) {
     stop(glue("This URL is not responding ({timeout_thres} seconds timeout)."))} 
   
   # If base url includes either index.html or index.php (or other similar cases)
   suffix <- str_replace(base_url, "^.*/", "") 
   
-  if (suffix %>% str_detect("html|php")) {
-    
+  raw_url <- base_url
+  if (suffix %>% str_detect("\\.")) {
       # Going up to the host level 
-      base_url <- glue("http://{parse_url(base_url)$host}")
-    
+      base_url <- base_url %>% str_replace(paste0(suffix,"$"),"")
   }
   
   # Try looking for it directly
@@ -75,24 +111,21 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
     glue("{base_url}who-we-are")
   ) # Who we are case
 
-  # Follow redirections
-  opts <- curlOptions(followlocation = TRUE)
-
   # Check whether a request for the specific URL works without error
-  if (sum(future_map_int(possible_about_urls, ~ url.exists(., .opts = opts))) >= 1) {
+  if (sum(future_map_int(possible_about_urls, ~ url_exists(., timeout_thres = timeout_thres))) >= 1) {
 
     # Dataframe with three columns
     about_links <- tibble(
       href = "Base",
       link_text = "Found without tree search.",
-      link = possible_about_urls[which(future_map_int(possible_about_urls, ~ url.exists(., .opts = opts)) == 1)]
+      link = possible_about_urls[which(future_map_int(possible_about_urls, ~ url_exists(., timeout_thres = timeout_thres)) == 1)]
     )
 
   } else {
 
+    base_url <- raw_url
     # else try looking for a suitable link
-
-    response <- GET(base_url)
+    response <- GET(base_url, config(ssl_verifypeer=FALSE, timeout=10,followlocation=TRUE))
     
     # no-encoding issues from the server 
     possible_read <- possibly(read_html, otherwise = "This URL is broken.")
@@ -167,7 +200,7 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
       }
 
       # Dataframe with three columns
-      else if (sum(c(is.na(if_not_about(tolower(href))), is.na(if_not_about(tolower(link_text))))) > 0) {
+      else if (prod(c(is.na(if_not_about(tolower(href))), is.na(if_not_about(tolower(link_text))))) > 0) {
 
         # Data frame with three columns
         about_links <- tibble(
@@ -189,42 +222,11 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
                  str_detect(tolower(href), "about")) %>%
           filter(!is.na(href)) %>%
           distinct() 
-        
-        # If link formatting is off because the page uses an absolute reference        
-        if (str_detect(about_links$href, "http")) {
 
-        # TRUE (absolute path)
+        # To make link formatting not off when page uses an absolute reference   
         about_links <- about_links %>%
-          mutate(link = href) %>%
-          mutate(href = "Absolute link") %>%
+          mutate(link = url_absolute(href, raw_url)) %>%
           select(href, link)
-        
-        } else {
-        
-          # FALSE (relative path)
-          
-          # Two or more depths  
-          if (str_count(about_links$link_text, "\\\n") >= 2) {
-            
-            about_links <- about_links %>%
-              # Remove only the first / 
-              mutate(href = str_replace(href, "/", "")) %>%
-              mutate(link = glue("{base_url}{href}")) %>%
-              select(href, link)
-          }
-          
-          else {
-            
-         # One depth 
-        about_links <- about_links %>%
-          # Remove every / 
-          mutate(href = str_replace_all(href, "/", "")) %>%
-          mutate(link = glue("{base_url}{href}")) %>%
-          select(href, link)
-        
-          }
-        
-        }
         
         return(about_links)
         
@@ -271,25 +273,8 @@ find_about_link <- function(base_url) {
     )
   } else {
     
-    about_url <- about_links %>% pull("href") %>% unique() %>% first()
+    about_url <- about_links %>% pull("link") %>% unique() %>% first()
 
-    # Base and target cases
-    if (about_url == "Base") {
-      
-      about_url <- about_links$link %>% first()
-    
-      } else if (str_detect(about_url, "Absolute|.php")) {
-        
-      about_url <- about_links$link
-      
-      } else {
-        
-        about_url <- glue("{base_url}{about_url}")
-        
-      }
-    
-    about_url <- str_replace(about_url, "(.*?//.*?)//(.*?)", "\\1/\\2")
-    
   }
 
   # about_url
