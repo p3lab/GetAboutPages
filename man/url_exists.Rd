@@ -4,13 +4,7 @@
 \alias{url_exists}
 \title{Check if a url exists with httr}
 \usage{
-url_exists(
-  url,
-  non_2xx_return_value = FALSE,
-  quiet = TRUE,
-  timeout_thres = 10,
-  ...
-)
+url_exists(url, non_2xx_return_value = FALSE, quiet = TRUE, timeout_thres = 10)
 }
 \arguments{
 \item{url}{A URL to check}
@@ -22,8 +16,6 @@ HTTP status code is not in the \verb{2xx} range. Default is to return \code{TRUE
 arises a warning message will be displayed. Default is \code{TRUE}.}
 
 \item{timeout_thres}{timeout in seconds for httr attempt}
-
-\item{\\dots}{additional arguments}
 }
 \value{
 A boolean value to indicate whether a website is reachable
