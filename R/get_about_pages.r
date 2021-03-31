@@ -7,8 +7,8 @@
 #' @export
 
 if_not_about <- function(href) {
-  if ((TRUE %in% (href %>% tolower() %>% str_detect("about"))) &
-    (any(href %>% tolower() %>% str_detect("about") == TRUE))) {
+  if ((TRUE %in% (href %>% tolower() %>% str_detect("about|who"))) &
+    (any(href %>% tolower() %>% str_detect("about|who") == TRUE))) {
     return(href)
   } else {
     return(NA)
@@ -23,7 +23,6 @@ if_not_about <- function(href) {
 #' @param quiet if not `FALSE`, then every time the `non_2xx_return_value` condition
 #'        arises a warning message will be displayed. Default is `TRUE`.
 #' @param timeout_thres timeout in seconds for httr attempt
-#' @param \\dots additional arguments
 #' 
 #' @return A boolean value to indicate whether a website is reachable
 #'
@@ -37,7 +36,7 @@ if_not_about <- function(href) {
 url_exists <- function(url, 
                        non_2xx_return_value = FALSE, 
                        quiet = TRUE, 
-                       timeout_thres = 10, ...) {
+                       timeout_thres = 10) {
   
   sHEAD <- safely(HEAD)
   sGET <- safely(GET)
@@ -45,13 +44,13 @@ url_exists <- function(url,
   # Try HEAD first since it's lightweight
   res <- sHEAD(url, config(ssl_verifypeer = FALSE, 
                            timeout = timeout_thres,
-                           followlocation = TRUE), ...)
+                           followlocation = TRUE))
 
   if (is.null(res$result) || ((status_code(res$result) %/% 200) != 1)) {
 
     res <- sGET(url, config(ssl_verifypeer = FALSE, 
                             timeout = timeout_thres,
-                            followlocation = TRUE), ...)
+                            followlocation = TRUE))
 
     if (is.null(res$result)) return(FALSE) # or whatever you want to return on "hard" errors
     if (((status_code(res$result) %/% 200) != 1)) {
@@ -88,6 +87,7 @@ url_exists <- function(url,
 #' @importFrom dplyr filter
 #' @importFrom dplyr select
 #' @importFrom dplyr arrange
+#' @importFrom dplyr desc
 #' @importFrom dplyr distinct
 #' @importFrom dplyr mutate
 #' @importFrom xml2 read_html
@@ -237,7 +237,8 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
       # To make link formatting not off when page uses an absolute reference   
       about_links <- about_links %>%
         mutate(link = url_absolute(href, base_url)) %>%
-        select(href, link)
+        select(href, link) %>%
+	distinct(link, .keep_all=TRUE)
         
       return(about_links)
         
