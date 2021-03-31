@@ -1,6 +1,6 @@
 Package: GetAboutPages
 Title: Getting about page content from an website 
-Version: 0.1.3
+Version: 0.1.4
 Authors@R: 
     c(person(given = "Milan",
            family = "de Vries",

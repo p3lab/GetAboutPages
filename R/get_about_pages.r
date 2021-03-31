@@ -77,6 +77,7 @@ url_exists <- function(url, non_2xx_return_value = FALSE, quiet = TRUE, timeout_
 #' @importFrom rvest html_text
 #' @importFrom dplyr filter
 #' @importFrom dplyr select
+#' @importFrom dplyr arrange
 #' @importFrom dplyr distinct
 #' @importFrom dplyr mutate
 #' @importFrom xml2 read_html
@@ -93,116 +94,113 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
   if (url_exists(base_url, timeout_thres = timeout_thres) == FALSE) {
     stop(glue("This URL is not responding ({timeout_thres} seconds timeout)."))} 
   
-  # If base url includes either index.html or index.php (or other similar cases)
-  suffix <- str_replace(base_url, "^.*/", "") 
-  
-  raw_url <- base_url
-  if (suffix %>% str_detect("\\.")) {
-      # Going up to the host level 
-      base_url <- base_url %>% str_replace(paste0(suffix,"$"),"")
-  }
-  
-  # Try looking for it directly
-  if (!grepl("/$", base_url)) {
-    base_url <- glue("{base_url}/")
+  response <- GET(base_url, config(ssl_verifypeer=FALSE, timeout=10,followlocation=TRUE))
+    
+  # no-encoding issues from the server 
+  possible_read <- possibly(read_html, otherwise = "This URL is broken.")
+
+  # encoding issues from the server 
+  possible_content <- possibly(~content(., encoding = "ISO-8859-1"), otherwise = "This URL is broken.")
+    
+  pg <- if (!str_detect(base_url, ".asp")) { possible_read(response) } else {
+    possible_content(response) 
   }
 
-  possible_about_urls <- c(
-    glue("{base_url}about-us"), # About case 1
-    glue("{base_url}about"), # About case 2
-    glue("{base_url}who-we-are")
-  ) # Who we are case
-
-  # Check whether a request for the specific URL works without error
-  if (sum(future_map_int(possible_about_urls, ~ url_exists(., timeout_thres = timeout_thres))) >= 1) {
-
+  # check if page is broken
+  if ("xml_document" %in% class(pg) == FALSE) {
     # Dataframe with three columns
     about_links <- tibble(
-      href = "Base",
-      link_text = "Found without tree search.",
-      link = possible_about_urls[which(future_map_int(possible_about_urls, ~ url_exists(., timeout_thres = timeout_thres)) == 1)]
+      href = NA,
+      link_text = "This website is broken.",
+      link = base_url
     )
+  }
 
-  } else {
-
-    base_url <- raw_url
-    # else try looking for a suitable link
-    response <- GET(base_url, config(ssl_verifypeer=FALSE, timeout=10,followlocation=TRUE))
+  # else check whether the website is built by Wix
+  if (TRUE %in% grepl("Wix.com", 
+                           html_nodes(pg, "meta") %>% 
+                           html_attr("content"))) {
+      
+    emailjs <- pg %>%
+      html_nodes("script") %>%
+      html_text()
+      
+    script_idx <- which(grepl("rendererModel", emailjs))
+      
+    res <- str_match(emailjs[script_idx], "var rendererModel =\\s*(.*?)\\s*;")
     
-    # no-encoding issues from the server 
-    possible_read <- possibly(read_html, otherwise = "This URL is broken.")
+    if (!is_empty(res)) {
+        
+      res <- fromJSON(res[2])
+      
+      page_list <- res$pageList$pages
 
-    # encoding issues from the server 
-    possible_content <- possibly(~content(., encoding = "ISO-8859-1"), otherwise = "This URL is broken.")
-    
-    pg <- if (!str_detect(base_url, ".asp")) { possible_read(response) } else {
-      possible_content(response) 
-    }
-
-    if ("xml_document" %in% class(pg) == FALSE) {
+      about_pages <- page_list %>%
+        filter(grepl("about", tolower(title)) | grepl("about", tolower(pageUriSEO))) %>%
+        select(pageUriSEO)
 
       # Dataframe with three columns
       about_links <- tibble(
+        href = "Base",
+        link_text = "The website is built by Wix.",
+        link = about_pages <- glue("{base_url}/{about_pages}")
+      ) 
+        
+    } 
+        
+  }
+
+  # else look through links on page 
+  if ("xml_document" %in% class(pg)) {
+
+    # URL of pages
+    href <- pg %>% html_nodes("a") %>% html_attr("href")
+
+    # Alternative
+    link_text <- pg %>% html_nodes("a") %>% html_text()
+
+    if (length(href) == 0) {
+
+      # Data frame with three columns
+      about_links <- tibble(
         href = NA,
-        link_text = "This website is broken.",
+        link_text = "The website is flat (no tree structure).",
         link = base_url
       )
     }
 
-    # else if checking whether the website is built by Wix
-    if (TRUE %in% grepl("Wix.com", 
-                             html_nodes(pg, "meta") %>% 
-                             html_attr("content"))) {
-      
-      emailjs <- pg %>%
-        html_nodes("script") %>%
-        html_text()
-      
-      script_idx <- which(grepl("rendererModel", emailjs))
-      
-      res <- str_match(emailjs[script_idx], "var rendererModel =\\s*(.*?)\\s*;")
-    
-      if (!is_empty(res)) {
-        
-        res <- fromJSON(res[2])
-      
-        page_list <- res$pageList$pages
+    # Dataframe with three columns
+    else if (prod(c(is.na(if_not_about(tolower(href))), is.na(if_not_about(tolower(link_text))))) > 0) {
 
-        about_pages <- page_list %>%
-          filter(grepl("about", tolower(title)) | grepl("about", tolower(pageUriSEO))) %>%
-          select(pageUriSEO)
+      # try checking directly before giving up
+      # If base url includes either index.html or index.php (or other similar cases)
+      suffix <- str_replace(base_url, "^.*/", "") 
+  
+      if (suffix %>% str_detect("\\.")) {
+        # Going up to the host level 
+        base_url <- base_url %>% str_replace(paste0(suffix,"$"),"")
+      }
+  
+      if (!grepl("/$", base_url)) {
+        base_url <- glue("{base_url}/")
+      }
+
+      possible_about_urls <- c(
+        glue("{base_url}about"), # About case 1
+        glue("{base_url}about-us"), # About case 2
+        glue("{base_url}who-we-are")
+      ) # Who we are case
+
+      # Check whether a request for the specific URL works without error
+      if (sum(future_map_int(possible_about_urls, ~ url_exists(., timeout_thres = timeout_thres))) >= 1) {
 
         # Dataframe with three columns
         about_links <- tibble(
           href = "Base",
-          link_text = "The website is built by Wix.",
-          link = about_pages <- glue("{base_url}/{about_pages}")
-        ) 
-        
-      } 
-        
-    }
-
-    if ("xml_document" %in% class(pg)) {
-
-      # URL of pages
-      href <- pg %>% html_nodes("a") %>% html_attr("href")
-
-      # Alternative
-      link_text <- pg %>% html_nodes("a") %>% html_text()
-
-      if (length(href) == 0) {
-
-        # Data frame with three columns
-        about_links <- tibble(
-          href = NA,
-          link_text = "The website is flat (no tree structure).",
-          link = base_url
+          link_text = "Found without tree search.",
+          link = possible_about_urls[which(future_map_int(possible_about_urls, ~ url_exists(., timeout_thres = timeout_thres)) == 1)]
         )
-      }
-
-      # Dataframe with three columns
-      else if (prod(c(is.na(if_not_about(tolower(href))), is.na(if_not_about(tolower(link_text))))) > 0) {
+      } else {
 
         # Data frame with three columns
         about_links <- tibble(
@@ -210,32 +208,31 @@ extract_about_links <- function(base_url, timeout_thres = 10) {
           "link_text" = "The website does not have about page.",
           "link" = base_url
         )
-      } else {
-        
-        
-        df <- tibble(
-          "href" = unique(if_not_about(href)), # Don't make it lower case (URLs are case sensitive)
-          "link_text" = if_not_about(tolower(link_text))[1], # Select the first element 
-          "link" = base_url
-        ) 
-        
-        about_links <- df %>%
-          filter(str_detect(tolower(link_text), "about") |
-                 str_detect(tolower(href), "about")) %>%
-          filter(!is.na(href)) %>%
-          distinct() 
-
-        # To make link formatting not off when page uses an absolute reference   
-        about_links <- about_links %>%
-          mutate(link = url_absolute(href, raw_url)) %>%
-          select(href, link)
-        
-        return(about_links)
-        
       }
-    }
+    } else {
+        
+      # about link found  
+      df <- tibble(
+        "href" = if_not_about(href), # Don't make it lower case (URLs are case sensitive)
+        "link_text" = if_not_about(tolower(link_text)),  
+        "link" = base_url
+      ) 
+        
+      about_links <- df %>%
+        filter(str_detect(tolower(link_text), "about|who") |
+               str_detect(tolower(href), "about|who")) %>%
+        filter(!is.na(href)) %>%
+        distinct() %>%
+	arrange(desc(str_detect(tolower(link_text), "about|who")+str_detect(tolower(href), "about|who")))
 
-    return(about_links)
+      # To make link formatting not off when page uses an absolute reference   
+      about_links <- about_links %>%
+        mutate(link = url_absolute(href, base_url)) %>%
+        select(href, link)
+        
+      return(about_links)
+        
+    }
   }
 
   return(about_links)
