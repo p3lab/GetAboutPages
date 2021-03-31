@@ -22,6 +22,8 @@ HTTP status code is not in the \verb{2xx} range. Default is to return \code{TRUE
 arises a warning message will be displayed. Default is \code{TRUE}.}
 
 \item{timeout_thres}{timeout in seconds for httr attempt}
+
+\item{\\dots}{additional arguments}
 }
 \value{
 A boolean value to indicate whether a website is reachable
