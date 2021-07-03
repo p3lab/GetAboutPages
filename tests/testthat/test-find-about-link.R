@@ -13,7 +13,7 @@ test_that("Check relative link cases", {
 test_that("Check absolute link cases", {
     
     # Case 1 
-    expect_equal(find_about_link("https://www.hhsyc.org/"), "http://hhsyc.org/About_HHSYC/AboutUs.html")
+    expect_equal(find_about_link("https://www.altrusaportlandgivesbooks.org/"), "https://www.altrusaportlandgivesbooks.org/membership-info--about.html")
 
     # Case 2 
     expect_equal(find_about_link("http://www.mythsandfacts.com"), "http://www.mythsandfacts.org/content/about.asp")
