@@ -342,3 +342,187 @@ get_about_page_content <- function(base_url) {
   
   return(about_page)
 }
+
+
+#' Extract all about page texts for a given organization
+#' 
+#' @param org_url A URL (the web address of the organization of interest
+#'
+#' @return about_texts A dataframe that contains the combined extracted text from the
+#' homepage and about pages, the shared header of the pages if found, and the shared
+#' footer if found.
+#' 
+#' @importFrom dplyr rowwise
+#' @importFrom dplyr mutate
+#' @importFrom dplyr filter
+#' @importFrom dplyr distinct
+#' @importFrom purrr possibly
+#' 
+#' @export
+get_all_texts <- function(org_url) {
+  safe_parse_by_length <- possibly(parse_by_length, otherwise=NA)
+  
+  x <- extract_about_links(org_url) %>% mutate(base_url=org_url)
+  x <- rbind(x,data.frame(base_url=org_url, url=org_url))  # add homepage as well
+  x <- x %>% rowwise() %>% mutate(txt = safe_parse_by_length(url))
+  x <- x %>% filter(!is.na(txt)) %>% distinct(txt, .keep_all=TRUE)
+  
+  if (nrow(x)==0) {
+    return(data.frame(body=NA,header=NA,footer=NA))
+  } else {
+    about_texts <- combine_texts(x$txt)
+    return(about_texts)
+  }
+}
+
+#' Extract significant text from html source
+#' 
+#' @param url A URL (the web address to extract text from)
+#' @param sentence_threshold an integer signifying the minimum word length for an included sentence
+#'
+#' @return extracted_text The text found on a page
+#' 
+#' @importFrom dplyr rowwise
+#' @importFrom xml2 read_html
+#' @importFrom purrr possibly
+#' @importFrom dplyr mutate
+#' @importFrom dplyr filter
+#' @importFrom stringr str_split
+#' @importFrom XML htmlTreeParse
+#' @importFrom XML xpathApply
+#' 
+#' @export
+parse_by_length <- function(url, sentence_threshold=5) {
+  response <- GET(url, config(ssl_verifypeer=FALSE, timeout=10,followlocation=TRUE))
+  possible_read <- possibly(read_html, otherwise = NA)
+  pg <- possible_read(response)
+  
+  if (is.na(pg)) {
+    return(NA)
+  }
+  
+  html <- htmlTreeParse(pg, useInternal = TRUE)
+  txt <- xpathApply(html, "//body//text()[not(ancestor::script)][not(ancestor::style)][not(ancestor::noscript)][not(ancestor::ul)][not(ancestor::form)]", xmlValue)
+  txt <- unlist(txt)
+  txt <- gsub("\r|\n|\t","",txt)
+  txt <- trimws(txt,"both")
+  txt <- txt[which(txt != "")]
+  extracted_text <- tibble(text=txt)
+  extracted_text <- extracted_text %>% rowwise() %>% 
+    mutate(sl = length(unlist(str_split(text," ")))) %>% 
+    filter(sl>sentence_threshold)
+  
+  extracted_text <- paste0(extracted_text$text,collapse=" ")
+  
+  return(extracted_text)
+}
+
+#' Combine multiple webpage texts into one shared text with headers and footers removed
+#' 
+#' @param x A vector of texts
+#'
+#' @return combined_text A data frame with three columns. Header is the shared header
+#' text. Footer is the shared footer text. Body is the concatenated text with header and 
+#' footer removed
+#' 
+#' 
+#' @importFrom stringi stri_replace_first_fixed
+#' @importFrom stringi stri_replace_last_fixed
+#' 
+#' @export
+combine_texts <- function(x) {
+  x <- unique(x)
+  
+  if (length(x) == 1) {
+    combined_text <- data.frame(body=x,header=NA,footer=NA)
+    return(combined_text)
+  }
+  
+  header <- find_header(x)
+  footer <- find_footer(x)
+  
+  if (!is.na(header)) {
+    x <- stri_replace_first_fixed(x,header,"") # remove header from the beginning
+  }
+  
+  if (!is.na(footer)) {
+    x <- stri_replace_last_fixed(x,footer,"") # remove footer from the end
+  }
+  
+  x <- trimws(x,"both") #trim white space
+  
+  combined_text <- data.frame(body = as.character(paste(x,collapse=" ")), header=header, footer=footer)
+  return(combined_text)
+}
+
+#' Find a common header string in a set of texts
+#' 
+#' @param x A vector of texts
+#' @param threshold Fraction of the texts required to share the common header string
+#'
+#' @return header A string that is the longest common header string for all the texts.
+#' 
+#' @importFrom stringr str_split
+#' @importFrom stringr str_length
+#' 
+#' @export
+find_header <- function(x, threshold=0.9) {
+  idx <- which(str_length(x) == max(str_length(x)))[1]   # use longest page as comparison to maximize chance of having header/footer
+  pg <- x[idx]
+  pgs <- x[-idx]
+  words <- str_split(pg, " ")[[1]]
+  
+  header <- NA
+  header_searching <- 1
+  i <- 1
+  
+  while (header_searching & i<=length(words)) {
+    test_header <- paste(words[1:i], collapse=" ")
+    header_searching_quotient <- sum(startsWith(pgs,test_header))/length(pgs)
+    
+    if (header_searching_quotient >= threshold) {
+      header <- test_header
+      i <- i+1
+    } else {
+      header_searching <- 0
+    }
+  }
+  
+  return(header)
+}
+
+#' Find a common footer string in a set of texts
+#' 
+#' @param x A vector of texts
+#' @param threshold Fraction of the texts required to share the common footer string
+#'
+#' @return footer A string that is the longest common footer string for all the texts.
+#' 
+#' @importFrom stringr str_split
+#' @importFrom stringr str_length
+#' 
+#' @export
+find_footer <- function(x, threshold=0.9) {
+  idx <- which(str_length(x) == max(str_length(x)))[1]   # use longest page as comparison to maximize chance of having header/footer
+  pg <- x[idx]
+  pgs <- x[-idx]
+  words <- str_split(pg, " ")[[1]]
+  
+  footer <- NA
+  footer_searching <- 1
+  i <- length(words)
+  
+  while (footer_searching & i>0) {
+    test_footer <- paste(words[i:length(words)], collapse=" ")
+    footer_searching_quotient <- sum(endsWith(pgs,test_footer))/length(pgs)
+    
+    if (footer_searching_quotient >= threshold) {
+      footer <- test_footer
+      i <- i-1
+    } else {
+      footer_searching <- 0
+    }
+  }
+  
+  return(footer)
+}

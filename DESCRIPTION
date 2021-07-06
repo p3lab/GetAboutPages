@@ -1,6 +1,6 @@
 Package: GetAboutPages
 Title: Getting about page content from an website 
-Version: 0.1.4
+Version: 0.1.5
 Authors@R: 
     c(person(given = "Milan",
            family = "de Vries",
@@ -33,7 +33,9 @@ Imports:
     urltools,
     textclean,
     magrittr,
-    httr
+    httr,
+    XML,
+    stringi
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1

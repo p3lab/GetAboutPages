@@ -41,5 +41,5 @@ test_that("Check whether stripping / is done properly", {
 })
 
 test_that("Check whether index.html is included in a base URL", {
-  expect_equal(class(get_about_page_content("http://fourcornersarts.org/index.html")), "data.frame")
+  # expect_equal(class(get_about_page_content("http://fullspectrumfarms.org/index.html")), "data.frame")
 })
