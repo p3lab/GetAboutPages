@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Check whether the href attribute contains "about" or not — if_not_about • GetAboutPages</title>
+<title>Find a common header string in a set of texts — find_header • GetAboutPages</title>
 
 
 <!-- jquery -->
@@ -39,8 +39,8 @@
 
 
 
-<meta property="og:title" content="Check whether the href attribute contains "about" or not — if_not_about" />
-<meta property="og:description" content="Check whether the href attribute contains &quot;about&quot; or not" />
+<meta property="og:title" content="Find a common header string in a set of texts — find_header" />
+<meta property="og:description" content="Find a common header string in a set of texts" />
 
 
 
@@ -111,29 +111,33 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>Check whether the href attribute contains "about" or not</h1>
+    <h1>Find a common header string in a set of texts</h1>
     <small class="dont-index">Source: <a href='https://github.com/p3lab/GetAboutPages/blob/master/R/get_about_pages.r'><code>R/get_about_pages.r</code></a></small>
-    <div class="hidden name"><code>if_not_about.Rd</code></div>
+    <div class="hidden name"><code>find_header.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Check whether the href attribute contains "about" or not</p>
+    <p>Find a common header string in a set of texts</p>
     </div>
 
-    <pre class="usage"><span class='fu'>if_not_about</span><span class='op'>(</span><span class='va'>href</span><span class='op'>)</span></pre>
+    <pre class="usage"><span class='fu'>find_header</span><span class='op'>(</span><span class='va'>x</span>, threshold <span class='op'>=</span> <span class='fl'>0.9</span><span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>href</th>
-      <td><p>An href attribute</p></td>
+      <th>x</th>
+      <td><p>A vector of texts</p></td>
+    </tr>
+    <tr>
+      <th>threshold</th>
+      <td><p>Fraction of the texts required to share the common header string</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>Either an href attribute (YES) or NA (NO)</p>
+    <p>header A string that is the longest common header string for all the texts.</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
