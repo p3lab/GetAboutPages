@@ -362,7 +362,8 @@ get_about_page_content <- function(base_url) {
 get_all_texts <- function(org_url) {
   safe_parse_by_length <- possibly(parse_by_length, otherwise=NA)
   
-  x <- extract_about_links(org_url) %>% mutate(base_url=org_url)
+  x <- extract_about_links(org_url) %>% mutate(base_url=org_url) %>%
+    elect(base_url, link) %>% rename(url=link)
   x <- rbind(x,data.frame(base_url=org_url, url=org_url))  # add homepage as well
   x <- x %>% rowwise() %>% mutate(txt = safe_parse_by_length(url))
   x <- x %>% filter(!is.na(txt)) %>% distinct(txt, .keep_all=TRUE)
